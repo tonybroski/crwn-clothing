@@ -15,7 +15,10 @@ import {
   doc,
   getDoc,
   setDoc,
-  Firestore,
+  collection,
+  writeBatch,
+  query,
+  getDocs,
 } from "firebase/firestore";
 const firebaseConfig = {
   apiKey: "AIzaSyBaRnFv1hbXFmQo0G13xSO_oYbN-7acY9o",
@@ -40,6 +43,35 @@ export const signInWithGoogleRedirect = () =>
 
 export const db = getFirestore();
 
+export const addCollectionAndDocuments = async (
+  collectionKey,
+  objectsToAdd
+) => {
+  const collectionRef = collection(db, collectionKey);
+  const batch = writeBatch(db);
+
+  objectsToAdd.forEach((object) => {
+    const docRef = doc(collectionRef, object.title.toLowerCase());
+    batch.set(docRef, object);
+  });
+
+  await batch.commit();
+  console.log("done");
+};
+
+export const getCategoriesAndDocuments = async () => {
+  const collectionRef = collection(db, "categories");
+  const q = query(collectionRef);
+  const querySnapshot = await getDocs(q);
+  const categoryMap = querySnapshot.docs.reduce((acc, docSnapshot) => {
+    const { title, items } = docSnapshot.data();
+    acc[title.toLowerCase()] = items;
+    return acc;
+  }, {});
+
+  return categoryMap;
+};
+
 export const createUserDocumentFromAuth = async (
   userAuth,
   additionalInformation = {}
@@ -51,8 +83,6 @@ export const createUserDocumentFromAuth = async (
   console.log(userDocRef);
 
   const userSnapShot = await getDoc(userDocRef);
-  // console.log(userSnapShot);
-  // console.log(userSnapShot.exists());
 
   if (!userSnapShot.exists()) {
     const { displayName, email } = userAuth;
@@ -71,12 +101,6 @@ export const createUserDocumentFromAuth = async (
   }
   return userDocRef;
 };
-
-// export const createAuthWithEmailAndPassword = async (email, password) => {
-//   if (!email || !password) return;
-
-//   return await createAuthWithEmailAndPassword(auth, email, password);
-// };
 
 export const createAuthUserWithEmailAndPassword = async (email, password) => {
   if (!email || !password) return;
